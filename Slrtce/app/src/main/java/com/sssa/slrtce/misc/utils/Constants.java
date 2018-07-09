@@ -14,9 +14,9 @@ public class Constants {
     /*making the ip address a single declaration for easy modification
      * you can also add the port your wamp or xamp is listening to
      * if it is not using the default e.g mine is listening to port 8080
-     * i.e 192.168.1.2:8080
+     * i.e http://192.168.43.102:8085
      */
-    private static String ipAdd = "http://192.168.1.2";
+    private static String ipAdd = "http://192.168.43.102:8085";
 
 
     /**
