@@ -4,7 +4,7 @@
 
 define("HOST", "localhost");
 define("USERNAME", "root");
-define("PASS", "");
+define("PASS", "password");
 define("DBNAME", "demo");
 
 ?>
