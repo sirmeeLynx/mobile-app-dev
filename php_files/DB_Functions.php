@@ -29,23 +29,25 @@
 		*/
 		
 		//store student data in db with encrypted_password
-		public function storeUsersData($fullname, $username, $email, $password, $confirmpassword){
-			$uuid = uniqid('', true); // auto generate uuid from php's method
-			$password == $confirmpassword;
+		public function storeUsersData($objUser){
+			$email = $objUser["User_Email"];
+			$password == $objUser["User_Password"];
 			$hash = $this->hashSSHA($password); //hashing pashword for encryption
 			$encrypted_password = $hash["encrypted"]; //encrypted password is stored
 			$salt = $hash["salt"]; 
-			$verify = md5(mt_rand(0,1000)); // generate random no between 0-1000 in md5
-			$grno = mt_rand(1000,10000); //generate random no between 1000-10000 (such that user will get 4 to 5 digit)
-			$sql = "INSERT INTO student(unique_id, username, email, encrypted_password, salt, created_at, updated_at, grno, hash, active, fullname) VALUES(?, ?, ?, ?, ?, NOW(), null, ?, ?, 0, ?)"; //insert data into student table
+			$token = mt_rand(1000,10000); // generate random no between 0-1000 in md5
+			$sql = "INSERT INTO users(User_Reg_No, User_Email, User_Password, User_Salt, User_FirstName, User_LastName, User_OtherName,
+			 User_Token, User_Is_Admin, User_Is_Student, User_Is_Lecturer) 
+			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; //insert data into user table
 			//prepare query
 			if($push = $this->conn->prepare($sql)){
-				$push->bind_param("ssssssss", $uuid, $username, $email, $encrypted_password, $salt, $grno, $verify, $fullname); // bind query
+				$push->bind_param("sssssssssss", $objUser["User_Name"], $email, $encrypted_password, $salt, $objUser["User_FirstName"], $objUser["User_LastName"], $objUser["User_OtherName"],
+				$token, $objUser["User_Is_Admin"],$objUser["User_Is_Student"],$objUser["User_Is_Lecturer"]); // bind query
 				$result = $push->execute(); //finally execute.
-				$push->close(); //close
+				$push->close(); //close, 
 				//check if data is stored successfully in database or not
 				if($result){
-					$push = $this->conn->prepare("SELECT * FROM student WHERE email = ?");
+					$push = $this->conn->prepare("SELECT * FROM Users WHERE email = ?");
 					$push->bind_param("s", $email);
 					$push->execute();
 					$user = $push->get_result()->fetch_assoc();
@@ -62,15 +64,15 @@
 		}
 		
 		// return username and password from db for student
-		public function getuserData($username, $password, $grno){
-			$push = $this->conn->prepare("SELECT * FROM student WHERE username = ? AND grno = ? ");
-			$push->bind_param("ss", $username, $grno);
+		public function getuserData($username, $password){
+			$push = $this->conn->prepare("SELECT * FROM Users WHERE User_Reg_No = ? ");
+			$push->bind_param("ss", $username);
 			if ($push->execute()) {
 				$user = $push->get_result()->fetch_assoc();
 				$push->close();
 				// verifying user password
-				$salt = $user['salt'];
-				$encrypted_password = $user['encrypted_password'];
+				$salt = $user['User_Salt'];
+				$encrypted_password = $user['User_Password'];
 				$hash = $this->checkhashSSHA($salt, $password);
 				// check for password equality
 				if ($encrypted_password == $hash) {
@@ -86,7 +88,7 @@
 		
 		//check if user's data present in db using student
 		public function checkifuserexisted($username){
-			$check = $this->conn->prepare("SELECT username FROM student WHERE username = ?");
+			$check = $this->conn->prepare("SELECT User_Reg_No FROM Users WHERE User_Reg_No = ?");
 			$check->bind_param("s", $username);
 			$check->execute();
 			$check->store_result();
@@ -113,29 +115,25 @@
 		}
 		
 		//send email verification for student
-		public function sendemailverify($email, $username, $password){
-			
+		public function sendemailverify($username){		
 			//Fetch result 
-			$result = mysqli_query($this->conn,"SELECT grno FROM student WHERE email='".$email."'"); 
-			$hashresult = mysqli_query($this->conn,"SELECT hash FROM student WHERE email='".$email."'"); 
-		
-			$match  = mysqli_fetch_row($result);
-			$matchs  = mysqli_fetch_row($hashresult);
-			$grno = $match[0]; 
-			$hash = $matchs[0];
-			if($grno > 0 && $hash >0){
+			$query = $this->conn->prepare("SELECT User_Email FROM Users WHERE User_Reg_No = ?"); 		
+			$query = bind_param("s",$username);
+			if($query->execute()){
+				$user = $query->get_result()->fetch_assoc();
+				$query->close();
 				$to = $email;
 				$subject = 'Signup | Verification';
 				$message = 'Thanks for signing up! Your account has been created, you can login with the following credentials after you have activated your account by pressing the url below. 
 				------------------------
 					Username: '.$username.'
-					Password: '.$password.'
-					StudentID: '.$grno. '
+					Password: '.$user["User_Password"].'
+					FullName: '.implode(" ", array($user["User_LastName"],$User["User_FirstName"],$User["User_OtherName"])). '
 				------------------------
 				Please click this link to activate your account:
-				http://slrtceapp.000webhostapp.com/verify.php?email='.$email.'&hash='.$hash.'';
+				http://slrtceapp.000webhostapp.com/verify.php?email='.$user["User_Email"].'&token='.$user["User_Token"].'';
 						
-				$headers = 'From:noreply@Slrtce pocket app' . "\r\n"; //setup header for mail
+				$headers = 'From:noreply@FPICMS pocket app' . "\r\n"; //setup header for mail
 				mail($to, $subject, $message, $headers); // Send our email
 				
 			}else{
@@ -145,7 +143,7 @@
 		
 		//check email verfied or not student
 		public function checkuseractived($username){
-			$search = mysqli_query($this->conn, "SELECT username, active FROM student WHERE username='".$username."' AND active='1'"); 
+			$search = mysqli_query($this->conn, "SELECT User_Reg_No, User_Is_Verified FROM Users WHERE User_Reg_No='".$username."' AND User_Is_Verified='1'"); 
 			$match  = mysqli_num_rows($search);
 			if($match > 0){
 				return $search;
@@ -155,17 +153,17 @@
 		}
 		
 		//Forgot password student
-		public function forgotPassword($password, $confirmpassword, $grno, $username){
+		public function forgotPassword($password, $confirmpassword, $username){
 			$password == $confirmpassword;
 			$hash = $this->hashSSHA($password); //hashing pashword for encryption
 			$encrypted_password = $hash["encrypted"]; //encrypted password is stored
 			$salt = $hash["salt"]; 
-			$sql = "UPDATE student SET encrypted_password= ?, salt= ? WHERE grno = ? AND username = ?"; //update query
+			$sql = "UPDATE Users SET User_Password= ?, salt= ? WHERE User_Reg_No = ?"; //update query
 			//prepare query
 			if($push = $this->conn->prepare($sql)){
-				$push->bind_param("ssss", $encrypted_password, $salt, $grno, $username); // bind query
+				$push->bind_param("sss", $encrypted_password, $salt, $username); // bind query
 				$result = $push->execute(); //finally execute.
-				//$result = $push->get_result()->fetch_assoc();
+				$result = $push->get_result()->fetch_assoc();
 				$push->close(); //close
 				return $result;
 			}else{
@@ -178,8 +176,7 @@
 		//send email notification if password is changed
 		public function sendemailnotify($username, $password){
 			//Fetch result 
-			$getemail = mysqli_query($this->conn,"SELECT email FROM student WHERE username='".$username."'");  //query for email from user
-		
+			$getemail = mysqli_query($this->conn,"SELECT User_Email FROM Users WHERE User_Reg_No='".$username."'");  //query for email from user		
 			$match  = mysqli_fetch_row($getemail);
 			$email = $match[0]; 
 			if($email > 0){
@@ -191,7 +188,7 @@
 					Password: '.$password.'
 				------------------------
 				You can manage your credential anytime in student pocket app';
-				$headers = 'From:noreply@Slrtce pocket app' . "\r\n"; //setup header for mail
+				$headers = 'From:noreply@FPICMS pocket app' . "\r\n"; //setup header for mail
 				mail($to, $subject, $message, $headers); // Send our email
 			}else{
 				echo "error";

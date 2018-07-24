@@ -5,6 +5,6 @@
 define("HOST", "localhost");
 define("USERNAME", "root");
 define("PASS", "password");
-define("DBNAME", "demo");
+define("DBNAME", "fpicms");
 
 ?>
