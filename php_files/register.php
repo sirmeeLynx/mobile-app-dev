@@ -8,14 +8,14 @@
 	$response = array("error" => FALSE); //response
 	
 	//isset function is applicable for variable is set or not
-	if(isset($_POST['fullname']) && isset($_POST['username']) && isset($_POST['email']) && isset($_POST['password']) && isset($_POST['confirmpassword'])) {
+	var_dump($_POST);
+	if(isset($_POST['ObjUser'])) {
 		
 		//got details
-		$fullname = $_POST['fullname'];
-		$username = $_POST['username'];
-		$email = $_POST['email'];
-		$password = $_POST['password'];
-		$confirmpassword = $_POST['confirmpassword'];
+		$objUser = json_decode($_POST['ObjUser']); //convert json string to object
+		$username = $objUser['User_Reg_No'];
+		$email = $objUser['User_Email'];
+		$password = $objUser['User_Password'];
 		$isValid = $db->isValidEmail($email);
 
 		//check user exists or not
@@ -28,18 +28,12 @@
 			
 		}else{
 			if($isValid){
-				if ($password == $confirmpassword) {
-					$user = $db->storeUsersData($fullname, $username, $email, $password, $confirmpassword); //create new user
-				   if($user != false){
+				$user = $db->storeUsersData(array($fullname, $username, $email, $password, $confirmpassword); //create new user
+				if($user != false){
 					   	$verify = $db->sendemailverify($email, $username, $password); //send email for verification
 						//show response in json format (JAVASCRIPT OBJECT NOTATION)
 						$response["error"] = FALSE;
-						$response["uid"] = $user["unique_id"];
-						$response["user"]["fullname"] = $user["fullname"];
-						$response["user"]["username"] = $user["username"];
-						$response["user"]["email"] 	= $user["email"];
-						$response["user"]["created_at"] = $user["created_at"];
-						$response["user"]["updated_at"] = $user["updated_at"];
+						$response["result"] = $user;
 						echo json_encode($response);
 					}else{
 						// failed to register account
@@ -47,13 +41,6 @@
 						$response["error_msg"] = "failed to register account";
 						echo json_encode($response);
 					}
-				}else {
-				   // password match failed
-					$response["error"] = TRUE;
-					$response["error_msg"] = "password match failed";
-					echo json_encode($response);
-				}
-				
 			}else {
 				   // email match failed
 					$response["error"] = TRUE;
