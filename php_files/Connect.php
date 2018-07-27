@@ -11,7 +11,6 @@
 			
 			//connect to connection
 			$this->Conn = new mysqli(HOST, USERNAME, PASS, DBNAME);
-			
 			return $this->Conn;
 		}
 	}

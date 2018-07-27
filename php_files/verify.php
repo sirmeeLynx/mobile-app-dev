@@ -6,18 +6,18 @@
 	$db = new Connect();
 	$Conn = $db->connect();
 	
-	if(isset($_GET['email']) && !empty($_GET['email']) AND isset($_GET['hash']) && !empty($_GET['hash'])){
-		$email = $_GET['email']; // Set email variable
-		$hash = $_GET['hash']; // Set hash variable	
-		// Verify email
-		$search = mysqli_query($Conn,"SELECT email, hash, active FROM student WHERE email='".$email."' AND hash='".$hash."' AND active='0'"); 
-		$match  = mysqli_num_rows($search);		
-		if($match > 0){
+	if(isset($_GET['username']) && !empty($_GET['username']) AND isset($_GET['token']) && !empty($_GET['token'])){
+		$username = $_GET['username']; $token = $_GET['token'];
+		// Verify username
+		($search = mysqli_query($Conn,"SELECT User_ID FROM Users WHERE User_Reg_No='".$username."' AND User_Token='".$token."' AND User_Is_Verified='0'")) or trigger_error($search->error,E_USER_ERROR); 
+		$User_ID = mysqli_fetch_array($search,MYSQLI_ASSOC)["User_ID"];	
+		if($User_ID){
+			$update_query = sprintf("UPDATE Users SET User_Is_Verified = '1', User_Token = null WHERE User_ID = '%s'",$User_ID);
 			echo "Successfully Verified";
-			mysqli_query($Conn, "UPDATE student SET active='1' WHERE email='".$email."' AND hash='".$hash."' AND active='0'");
+			mysqli_query($Conn, $update_query);
 		}else{
 			//account has already been activated.
-			echo "Already verified";
+			echo "Either account is not valid or your account has been verified already.";
 		}	
 
 	}else{

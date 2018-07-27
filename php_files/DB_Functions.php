@@ -31,7 +31,7 @@
 		//store student data in db with encrypted_password
 		public function storeUsersData($objUser){
 			$email = $objUser["User_Email"];
-			$password == $objUser["User_Password"];
+			$password = $objUser["User_Password"];
 			$hash = $this->hashSSHA($password); //hashing pashword for encryption
 			$encrypted_password = $hash["encrypted"]; //encrypted password is stored
 			$salt = $hash["salt"]; 
@@ -40,14 +40,15 @@
 			 User_Token, User_Is_Admin, User_Is_Student, User_Is_Lecturer) 
 			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; //insert data into user table
 			//prepare query
-			if($push = $this->conn->prepare($sql)){
+			($push = $this->conn->prepare($sql)) or trigger_error($this->conn->error, E_USER_ERROR);
+			if($push){
 				$push->bind_param("sssssssssss", $objUser["User_Name"], $email, $encrypted_password, $salt, $objUser["User_FirstName"], $objUser["User_LastName"], $objUser["User_OtherName"],
 				$token, $objUser["User_Is_Admin"],$objUser["User_Is_Student"],$objUser["User_Is_Lecturer"]); // bind query
-				$result = $push->execute(); //finally execute.
+				($result = $push->execute()) or trigger_error($this->conn->error, E_USER_ERROR); //finally execute.
 				$push->close(); //close, 
 				//check if data is stored successfully in database or not
 				if($result){
-					$push = $this->conn->prepare("SELECT * FROM Users WHERE email = ?");
+					$push = $this->conn->prepare("SELECT * FROM Users WHERE User_Email = ?");
 					$push->bind_param("s", $email);
 					$push->execute();
 					$user = $push->get_result()->fetch_assoc();
@@ -58,7 +59,7 @@
 				}
 			}else{
 			   //error !! don't go further
-			   var_dump($this->conn->error);
+			   return $this->conn->error;
 			}
 			
 		}
@@ -66,7 +67,7 @@
 		// return username and password from db for student
 		public function getuserData($username, $password){
 			$push = $this->conn->prepare("SELECT * FROM Users WHERE User_Reg_No = ? ");
-			$push->bind_param("ss", $username);
+			$push->bind_param("s", $username);
 			if ($push->execute()) {
 				$user = $push->get_result()->fetch_assoc();
 				$push->close();
@@ -109,36 +110,27 @@
 			if ($check->num_rows>0) {
 				$check->close();
 				return true;
-            }else {
+			}else {
 				return false; // grno is not existed
 			}
 		}
 		
 		//send email verification for student
-		public function sendemailverify($username){		
+		public function sendemailverify($user,$password){		
 			//Fetch result 
-			$query = $this->conn->prepare("SELECT User_Email FROM Users WHERE User_Reg_No = ?"); 		
-			$query = bind_param("s",$username);
-			if($query->execute()){
-				$user = $query->get_result()->fetch_assoc();
-				$query->close();
-				$to = $email;
-				$subject = 'Signup | Verification';
-				$message = 'Thanks for signing up! Your account has been created, you can login with the following credentials after you have activated your account by pressing the url below. 
+			$to = $user["User_Email"];
+			$username = $user["User_Reg_No"];
+			$subject = 'Signup | Verification';
+			$message = 'Thanks for signing up! Your account has been created, you can login with the following credentials after you have activated your account by pressing the url below. 
 				------------------------
 					Username: '.$username.'
-					Password: '.$user["User_Password"].'
-					FullName: '.implode(" ", array($user["User_LastName"],$User["User_FirstName"],$User["User_OtherName"])). '
+					Password: '.$password.'
+					FullName: '.implode(" ", array($user["User_LastName"],$user["User_FirstName"],$user["User_OtherName"])). '
 				------------------------
 				Please click this link to activate your account:
-				http://slrtceapp.000webhostapp.com/verify.php?email='.$user["User_Email"].'&token='.$user["User_Token"].'';
-						
-				$headers = 'From:noreply@FPICMS pocket app' . "\r\n"; //setup header for mail
-				mail($to, $subject, $message, $headers); // Send our email
-				
-			}else{
-				echo "error";
-			}
+				http://slrtceapp.000webhostapp.com/verify.php?username='.$user["User_Reg_No"].'&token='.$user["User_Token"].'';		
+			$headers = 'From:postmaster@localhost' . "\r\n"; //setup header for mail
+			mail($to, $subject, $message, $headers); // Send our email		
 		}
 		
 		//check email verfied or not student

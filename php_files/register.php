@@ -4,16 +4,16 @@
 	
 	//connection to db and constructor of function class
 	$db = new DB_Functions();
-	
+	//$rest_json = file_get_contents("php://input");
+	//$_POST = json_decode($rest_json,true);
 	$response = array("error" => FALSE); //response
-	
 	//isset function is applicable for variable is set or not
-	var_dump($_POST);
+	
 	if(isset($_POST['ObjUser'])) {
 		
 		//got details
-		$objUser = json_decode($_POST['ObjUser']); //convert json string to object
-		$username = $objUser['User_Reg_No'];
+		$objUser = json_decode($_POST['ObjUser'],true); //convert json string to object
+		$username = $objUser['User_Name'];
 		$email = $objUser['User_Email'];
 		$password = $objUser['User_Password'];
 		$isValid = $db->isValidEmail($email);
@@ -24,13 +24,12 @@
 			//already existed username in db
 			$response["error"] = TRUE;
 			$response["error_msg"] = "User already existed with " . $email;
-			echo json_encode($response);
-			
+			echo json_encode($response);	
 		}else{
 			if($isValid){
-				$user = $db->storeUsersData(array($fullname, $username, $email, $password, $confirmpassword); //create new user
+				$user = $db->storeUsersData($objUser); //create new user
 				if($user != false){
-					   	$verify = $db->sendemailverify($email, $username, $password); //send email for verification
+					   	$verify = $db->sendemailverify($user,$password); //send email for verification
 						//show response in json format (JAVASCRIPT OBJECT NOTATION)
 						$response["error"] = FALSE;
 						$response["result"] = $user;
